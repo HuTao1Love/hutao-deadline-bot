@@ -38,11 +38,11 @@ class Command(ABCCommand):
 @dataclass
 class StateCommand(ABCCommand):
     state: Optional[State]
-    content_types: Optional[ContentTypes]
+    content_types: Optional[ContentTypes] = field(default=None)
 
     def register(self, dispatcher: Dispatcher) -> None:
         dispatcher.register_message_handler(
             callback=self.process,
             state=self.state,
-            content_types=self.content_types
+            content_types=(self.content_types if self.content_types else ContentTypes.TEXT)
         )

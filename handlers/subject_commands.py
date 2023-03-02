@@ -1,5 +1,5 @@
 import peewee
-from aiogram.types import Message, ReplyKeyboardRemove, ContentTypes, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 
 from database import Subject, Deadline
