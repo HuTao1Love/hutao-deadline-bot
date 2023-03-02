@@ -1,10 +1,9 @@
 from aiogram import Dispatcher
-from aiogram.types import ContentTypes
 from state_machine import StateMachine
 
 from .command_classes import Command, StateCommand
 
-from .start import process_start
+from .start import process_start, process_shutdown
 from .subject_commands import process_create_subject, process_delete_subject, \
     process_end_creating_subject, process_end_deleting_subject
 from .deadline_commands import process_add_deadline, process_list_deadlines, process_add_deadline_get_subject, \
@@ -14,6 +13,7 @@ from .deadline_commands import process_add_deadline, process_list_deadlines, pro
 
 commands = [
     Command(process_start, 'start', "Start"),
+    Command(process_shutdown, 'shutdown', ""),
     Command(process_create_subject, ['new_subject', 'create_subject'], "Create new subject"),
     Command(process_delete_subject, 'delete_subject', "Delete existing subject"),
 
@@ -34,5 +34,5 @@ commands = [
 
 async def setup(dispatcher: Dispatcher) -> None:
     [i.register(dispatcher) for i in commands]
-    menu_commands = [i.create_bot_command() for i in commands if type(i) is Command]
+    menu_commands = [i.create_bot_command() for i in commands if type(i) is Command and i.hint]
     await dispatcher.bot.set_my_commands(menu_commands)
