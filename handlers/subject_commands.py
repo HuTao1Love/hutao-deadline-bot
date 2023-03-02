@@ -7,13 +7,12 @@ from state_machine import StateMachine
 from keyboards import create_markup
 
 
-async def process_create_subject(message: Message, state: FSMContext):
-    await state.update_data(type="CreateNewSubject")
+async def process_create_subject(message: Message):
     await StateMachine.waiting_for_create_subject.set()
     await message.answer("Enter new subject name")
 
 
-async def process_delete_subject(message: Message, state: FSMContext):
+async def process_delete_subject(message: Message):
     query = Subject.select().where(Subject.user == message.from_id).order_by(Subject.subject.asc())
     keyboard: peewee.ModelDictCursorWrapper[Subject] = query.execute()
     if len(keyboard) == 0:
@@ -21,7 +20,6 @@ async def process_delete_subject(message: Message, state: FSMContext):
         return
 
     keyboard_markup = create_markup([i.subject for i in keyboard], 3)
-    await state.update_data(type="DeleteSubject")
     await StateMachine.waiting_for_delete_subject.set()
     await message.answer("Select subject for delete", reply_markup=keyboard_markup)
 

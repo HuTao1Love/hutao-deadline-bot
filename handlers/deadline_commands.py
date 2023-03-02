@@ -11,14 +11,12 @@ from datetime import date
 
 
 async def process_add_deadline(message: Message, state: FSMContext):
-    # Deadline.create(user=message.from_id, subject="Алгосики", task="Лаба", deadline=date(2023, 3, 3))
     query = Subject.select().where(Subject.user == message.from_id).order_by(Subject.subject.asc())
     keyboard: peewee.ModelDictCursorWrapper[Deadline] = query.execute()
     if len(keyboard) == 0:
         await message.answer("Subject list is empty, please add subjects to continue")
         return
 
-    await state.update_data(type="CreateNewDeadline")
     await StateMachine.waiting_for_subject.set()
 
     keyboard_markup = create_markup([i.subject for i in keyboard], 3)
@@ -72,3 +70,46 @@ async def process_list_deadlines(message: Message):
         return
 
     await message.answer("Your tasks:\n" + "\n".join(texts))
+
+
+async def process_delete_deadline(message: Message):
+    query = Subject.select().where(Subject.user == message.from_id).order_by(Subject.subject.asc())
+    keyboard: peewee.ModelDictCursorWrapper[Deadline] = query.execute()
+    if len(keyboard) == 0:
+        await message.answer("Subject list is empty, please add subjects to continue")
+        return
+
+    await StateMachine.waiting_for_deadline_delete_subject.set()
+    keyboard_markup = create_markup([i.subject for i in keyboard], 3)
+    await message.answer("Choose subject from given list", reply_markup=keyboard_markup)
+
+
+async def process_delete_deadline_get_subject(message: Message, state: FSMContext):
+    query = Subject.select().where(Subject.user == message.from_id).execute()
+    query: peewee.ModelDictCursorWrapper[Subject]
+    if not query:
+        await message.answer("Please, select subject from keyboard")
+        return
+
+    tasks = Deadline.select().where(Deadline.user == message.from_id, Deadline.subject == message.text).execute()
+    if not tasks:
+        await message.answer("No deadlines on this subject")
+        return
+
+    await state.update_data(subject=message.text)
+    await StateMachine.waiting_for_deadline_delete_task.set()
+    keyboard_markup = create_markup([i.task for i in tasks], 3)
+    await message.answer("Please, select task from keyboard", reply_markup=keyboard_markup)
+
+
+async def process_delete_deadline_get_task(message: Message, state: FSMContext):
+    data = await state.get_data()
+    if message.text[-1] == "…":
+        message.text = message.text[:-1]
+    Deadline.delete().where(Deadline.user == message.from_id,
+                            Deadline.subject == data['subject'],
+                            Deadline.task.startswith(message.text)
+                            ).execute()
+
+    await state.finish()
+    await message.answer("Done", reply_markup=ReplyKeyboardRemove())
