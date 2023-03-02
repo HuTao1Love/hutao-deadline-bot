@@ -10,7 +10,7 @@ from keyboards import create_markup
 async def process_create_subject(message: Message, state: FSMContext):
     await state.update_data(type="CreateNewSubject")
     await StateMachine.waiting_for_create_subject.set()
-    await message.answer("Enter new subject name", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Enter new subject name")
 
 
 async def process_delete_subject(message: Message, state: FSMContext):
@@ -28,14 +28,15 @@ async def process_delete_subject(message: Message, state: FSMContext):
 
 async def process_end_creating_subject(message: Message, state: FSMContext):
     await state.finish()
+
     query: peewee.ModelDictCursorWrapper = Subject.select().where(Subject.user == message.from_id and
                                                                   Subject.subject == message.text).execute()
     if len(query) > 0:
-        await message.answer("This subject already exists", reply_markup=ReplyKeyboardRemove())
+        await message.answer("This subject already exists")
         return
 
     Subject.create(user=message.from_id, subject=message.text)
-    await message.answer("Done", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Done")
 
 
 async def process_end_deleting_subject(message: Message, state: FSMContext):
