@@ -12,14 +12,14 @@ from .deadline_commands import process_add_deadline, process_list_deadlines, pro
 
 
 commands = [
+    Command(process_add_deadline, ['new_deadline', 'add_deadline', 'new', 'add'], "Create new deadline"),
+    Command(process_list_deadlines, ['list_deadlines', 'list'], "Check your deadlines"),
+    Command(process_delete_deadline, 'delete_deadline', "Delete deadline"),
+
     Command(process_start, 'start', "Start"),
     Command(process_shutdown, 'shutdown', ""),
     Command(process_create_subject, ['new_subject', 'create_subject'], "Create new subject"),
     Command(process_delete_subject, 'delete_subject', "Delete existing subject"),
-
-    Command(process_add_deadline, ['new_deadline', 'add_deadline', 'new', 'add'], "Create new deadline"),
-    Command(process_list_deadlines, ['list_deadlines', 'list'], "Check your deadlines"),
-    Command(process_delete_deadline, 'delete_deadline', "Delete deadline"),
 
     StateCommand(process_end_creating_subject, StateMachine.waiting_for_create_subject),
     StateCommand(process_end_deleting_subject, StateMachine.waiting_for_delete_subject),
