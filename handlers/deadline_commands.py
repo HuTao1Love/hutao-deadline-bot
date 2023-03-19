@@ -10,6 +10,8 @@ from keyboards import create_markup
 from datetime import date
 import re
 
+from functions import get_date
+
 
 async def process_add_deadline(message: Message, state: FSMContext):
     query = Subject.select().where(Subject.user == message.from_id).order_by(Subject.subject.asc())
@@ -76,13 +78,6 @@ async def process_add_deadline_get_date(message: Message, state: FSMContext):
 
 
 async def process_list_deadlines(message: Message):
-    def get_date(deadline: datetime, time: str = None) -> str:
-        date_format = "%d.%m.%Y" if deadline.year != date.today().year else "%d.%m"
-        if time is None:
-            return deadline.strftime(date_format)
-        else:
-            return deadline.strftime(date_format) + " " + time
-
     query = Deadline.select().where(Deadline.user == message.from_id).order_by(Deadline.deadline.asc()).execute()
     query: peewee.ModelDictCursorWrapper[Deadline]
     texts = [f"{i.subject}: {i.task} ({get_date(i.deadline, i.time)})" for i in query]
