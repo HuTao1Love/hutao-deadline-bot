@@ -1,4 +1,4 @@
-from peewee import Model, SqliteDatabase, BigIntegerField, TextField, DateField
+from peewee import Model, SqliteDatabase, BigIntegerField, TextField, DateTimeField
 
 db = SqliteDatabase('deadlines.sqlite')
 
@@ -20,7 +20,7 @@ class Deadline(BaseModel):
     user = BigIntegerField(column_name="user")
     subject = TextField(column_name="subject")
     task = TextField(column_name="task")
-    deadline = DateField(column_name="deadline")
+    deadline = DateTimeField(column_name="deadline")
 
     class Meta:
         table_name = 'deadlines'

@@ -38,13 +38,21 @@ async def process_add_deadline_get_subject(message: Message, state: FSMContext):
 async def process_add_deadline_get_task(message: Message, state: FSMContext):
     await state.update_data(task=message.text)
     await StateMachine.waiting_for_date.set()
-    await message.answer("Please, write deadline in format DD.MM.YYYY")
+    await message.answer("Please, write deadline in format DD.MM.YYYY or DD.MM (if year is current) and time in "
+                         "format HH:MM if needed")
 
 
 async def process_add_deadline_get_date(message: Message, state: FSMContext):
     try:
-        deadline_date = datetime.strptime(message.text, "%d.%m.%Y")
-        deadline_date = date(deadline_date.year, deadline_date.month, deadline_date.day)
+        info = message.text.split()
+        deadline_date = datetime.strptime(info[0], "%d.%m.%Y")
+        if len(info) > 1:
+            deadline_time = datetime.strptime(info[1], "%H:%M")
+            deadline_date = datetime(deadline_date.year,
+                                     deadline_date.month,
+                                     deadline_date.day,
+                                     deadline_time.hour,
+                                     deadline_time.minute)
     except ValueError:
         await message.answer("Please, enter valid date")
         return
@@ -61,9 +69,14 @@ async def process_add_deadline_get_date(message: Message, state: FSMContext):
 
 
 async def process_list_deadlines(message: Message):
+    def get_date_format(deadline: datetime):
+        date_message = "%d.%m" if deadline.year == datetime.now().year else "%d.%m.%Y"
+        time_message = "%H:%M" if deadline.hour != 0 or deadline.minute != 0 else ""
+        return " ".join([i for i in [date_message, time_message] if i])
+
     query = Deadline.select().where(Deadline.user == message.from_id).order_by(Deadline.deadline.asc()).execute()
     query: peewee.ModelDictCursorWrapper[Deadline]
-    texts = [f"{i.subject}: {i.task} ({i.deadline.strftime('%d.%m.%Y')})" for i in query]
+    texts = [f"{i.subject}: {i.task} ({i.deadline.strftime(get_date_format(i.deadline))})" for i in query]
 
     if not texts:
         await message.answer("You haven't got any deadlines :)")
