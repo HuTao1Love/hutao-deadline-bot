@@ -8,6 +8,7 @@ from state_machine import StateMachine
 from keyboards import create_markup
 
 from datetime import date
+import re
 
 
 async def process_add_deadline(message: Message, state: FSMContext):
@@ -39,22 +40,27 @@ async def process_add_deadline_get_task(message: Message, state: FSMContext):
     await state.update_data(task=message.text)
     await StateMachine.waiting_for_date.set()
     await message.answer("Please, write deadline in format DD.MM.YYYY or DD.MM (if year is current) and time in "
-                         "format HH:MM if needed")
+                         "format HH:MM or start-end HH:MM-HH:MM if needed")
 
 
 async def process_add_deadline_get_date(message: Message, state: FSMContext):
     try:
         info = message.text.split()
-        deadline_date = datetime.strptime(info[0], "%d.%m.%Y")
-        if len(info) > 1:
-            deadline_time = datetime.strptime(info[1], "%H:%M")
-            deadline_date = datetime(deadline_date.year,
-                                     deadline_date.month,
-                                     deadline_date.day,
-                                     deadline_time.hour,
-                                     deadline_time.minute)
+        if info[0].count('.') == 1:
+            info[0] += f".{date.today().year}"
+        deadline_date = datetime.strptime(info[0], "%d.%m.%Y").date()
+        deadline_time = None if len(info) == 1 else info[1]
+
+        if deadline_time:
+            if len(deadline_time) not in [5, 11]:
+                raise ValueError
+            if len(deadline_time) == 11 and re.match(r"\d{2}:\d{2}-\d{2}:\d{2}", deadline_time) is None:
+                raise ValueError
+            if len(deadline_time) == 5 and re.match(r"\d{2}:\d{2}", deadline_time) is None:
+                raise ValueError
+
     except ValueError:
-        await message.answer("Please, enter valid date")
+        await message.answer("Please, enter valid date and time")
         return
 
     data = await state.get_data()
@@ -63,20 +69,23 @@ async def process_add_deadline_get_date(message: Message, state: FSMContext):
     Deadline.create(user=message.from_id,
                     subject=data['subject'],
                     task=data['task'],
-                    deadline=deadline_date
+                    deadline=deadline_date,
+                    time=deadline_time
                     )
     await message.answer("New deadline created")
 
 
 async def process_list_deadlines(message: Message):
-    def get_date_format(deadline: datetime):
-        date_message = "%d.%m" if deadline.year == datetime.now().year else "%d.%m.%Y"
-        time_message = "%H:%M" if deadline.hour != 0 or deadline.minute != 0 else ""
-        return " ".join([i for i in [date_message, time_message] if i])
+    def get_date(deadline: datetime, time: str = None) -> str:
+        date_format = "%d.%m.%Y" if deadline.year != date.today().year else "%d.%m"
+        if time is None:
+            return deadline.strftime(date_format)
+        else:
+            return deadline.strftime(date_format) + " " + time
 
     query = Deadline.select().where(Deadline.user == message.from_id).order_by(Deadline.deadline.asc()).execute()
     query: peewee.ModelDictCursorWrapper[Deadline]
-    texts = [f"{i.subject}: {i.task} ({i.deadline.strftime(get_date_format(i.deadline))})" for i in query]
+    texts = [f"{i.subject}: {i.task} ({get_date(i.deadline, i.time)})" for i in query]
 
     if not texts:
         await message.answer("You haven't got any deadlines :)")
